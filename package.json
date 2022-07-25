@@ -43,6 +43,7 @@
     "postpublish": "pinst --enable",
     "release": "standard-version",
     "test": "yarn compile:test && cross-env TEST=true mocha",
+    "test:e2e": "yarn test './test/e2e/**/*.spec.ts'",
     "test:gas": "cross-env REPORT_GAS=1 npx hardhat test",
     "test:integration": "yarn test './test/integration/**/*.spec.ts'",
     "test:unit": "yarn test 'test/unit/**/*.spec.ts'"
@@ -58,7 +59,8 @@
     "eth-gas-reporter/colors": "1.4.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "4.7.1"
+    "@openzeppelin/contracts": "4.7.1",
+    "merkletreejs": "^0.2.32"
   },
   "devDependencies": {
     "@codechecks/client": "0.1.12",
