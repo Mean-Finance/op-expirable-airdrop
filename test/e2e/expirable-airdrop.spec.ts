@@ -50,7 +50,7 @@ describe('Expirable airdrop', () => {
 
     // deploy contract
     const ExpirableAirdrop = await ethers.getContractFactory('ExpirableAirdrop');
-    expirableAirdrop = await ExpirableAirdrop.deploy(token.address, expirationTimestamp, root);
+    expirableAirdrop = await ExpirableAirdrop.deploy(deployer.address, token.address, expirationTimestamp, root);
   });
 
   when('deposit', () => {

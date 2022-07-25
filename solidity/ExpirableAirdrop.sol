@@ -24,14 +24,16 @@ contract ExpirableAirdrop is Governable {
   event Retrieved(uint256 timestamp, address receiver);
 
   /// @notice Creates a new ExpirableAirdrop contract
+  /// @param _governor governor address
   /// @param _token token to airdrop
   /// @param _expirationTimestamp expiration timestamp
   /// @param _merkleRoot of claimees
   constructor(
+    address _governor,
     IERC20 _token,
     uint256 _expirationTimestamp,
     bytes32 _merkleRoot
-  ) Governable(msg.sender) {
+  ) Governable(_governor) {
     token = _token;
     expirationTimestamp = _expirationTimestamp;
     merkleRoot = _merkleRoot;
