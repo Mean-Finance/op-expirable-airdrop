@@ -3,7 +3,7 @@ import { toUnit } from '@utils/bn';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { BigNumber, Wallet } from 'ethers';
-import { takeSnapshot, SnapshotRestorer, time, setBalance } from '@nomicfoundation/hardhat-network-helpers';
+import { takeSnapshot, time, setBalance, impersonateAccount } from '@nomicfoundation/hardhat-network-helpers';
 import { MerkleTree } from 'merkletreejs';
 
 function getLeaf(address: string, amount: BigNumber) {
@@ -36,6 +36,8 @@ describe('Expirable airdrop', () => {
   let expirableAirdrop: any;
   let airdropAmount: number = 10;
   let snapshot: any;
+  const randomAddress: string = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
+  const randomAddress2: string = '0x2089035369B33403DdcaBa6258c34e0B3FfbbBd9';
 
   before(async () => {
     nowTimestamp = await time.latest();
@@ -105,12 +107,13 @@ describe('Expirable airdrop', () => {
     });
 
     then('revert if no airdrop', async () => {
-      let random: any = (await Wallet.createRandom()).connect(ethers.provider);
-      await setBalance(random.address, toUnit(10000));
-      let _leaf = getLeaf(random.address, toUnit(airdropAmount));
+      await impersonateAccount(randomAddress);
+      let random: any = await ethers.getSigner(randomAddress);
+      await setBalance(randomAddress, toUnit(10000));
+      let _leaf = getLeaf(randomAddress, toUnit(airdropAmount));
       let _proof = tree.getHexProof(_leaf);
 
-      await expect(expirableAirdrop.connect(random).claim(random.address, toUnit(airdropAmount), _proof)).to.be.revertedWithCustomError(
+      await expect(expirableAirdrop.connect(random).claim(randomAddress, toUnit(airdropAmount), _proof)).to.be.revertedWithCustomError(
         expirableAirdrop,
         'NotInMerkle'
       );
@@ -127,17 +130,19 @@ describe('Expirable airdrop', () => {
     given(async () => {
       bob = accounts[2];
       carl = accounts[3];
-      receiver = (await Wallet.createRandom()).address;
+      await impersonateAccount(randomAddress2);
+      receiver = await ethers.getSigner(randomAddress2);
+      await setBalance(randomAddress, toUnit(10000));
       leaf = getLeaf(bob.address, toUnit(airdropAmount));
       proof = tree.getHexProof(leaf);
     });
 
     then('airdrop claimed', async () => {
       // user claims airdrop
-      await expirableAirdrop.connect(bob).claimAndTransfer(receiver, toUnit(airdropAmount), proof);
+      await expirableAirdrop.connect(bob).claimAndTransfer(randomAddress2, toUnit(airdropAmount), proof);
 
       // expect
-      expect(await token.balanceOf(receiver)).equal(toUnit(airdropAmount));
+      expect(await token.balanceOf(randomAddress2)).equal(toUnit(airdropAmount));
     });
 
     then('revert if expired', async () => {
@@ -148,7 +153,7 @@ describe('Expirable airdrop', () => {
       await time.increase(3 * oneMonth);
 
       // expeect
-      await expect(expirableAirdrop.connect(carl).claimAndTransfer(receiver, toUnit(airdropAmount), proof)).to.be.revertedWithCustomError(
+      await expect(expirableAirdrop.connect(carl).claimAndTransfer(randomAddress2, toUnit(airdropAmount), proof)).to.be.revertedWithCustomError(
         expirableAirdrop,
         'Expired'
       );
