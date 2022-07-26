@@ -103,9 +103,8 @@ contract ExpirableAirdrop is Governable {
     if (block.timestamp <= expirationTimestamp) revert NotExpired();
 
     // INTERACTIONS
-    address _gov = IGovernable(address(this)).governor();
-    token.safeTransfer(_gov, token.balanceOf(address(this)));
+    token.safeTransfer(governor, token.balanceOf(address(this)));
 
-    emit Retrieved(_gov);
+    emit Retrieved(governor);
   }
 }

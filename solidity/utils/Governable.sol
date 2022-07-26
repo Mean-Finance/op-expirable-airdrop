@@ -1,78 +1,57 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity >=0.8.7 <0.9.0;
 
-pragma solidity >=0.7.0;
+import '../interfaces/IGovernable.sol';
 
-interface IGovernable {
-  event PendingGovernorSet(address _pendingGovernor);
-  event PendingGovernorAccepted();
-
-  function setPendingGovernor(address _pendingGovernor) external;
-
-  function acceptPendingGovernor() external;
-
-  function governor() external view returns (address);
-
-  function pendingGovernor() external view returns (address);
-
-  function isGovernor(address _account) external view returns (bool _isGovernor);
-
-  function isPendingGovernor(address _account) external view returns (bool _isPendingGovernor);
-}
-
+/**
+ * @notice This contract is meant to be used in other contracts. By using this contract,
+ *         a specific address will be given a "governor" role, which basically will be able to
+ *         control certains aspects of the contract. There are other contracts that do the same,
+ *         but this contract forces a new governor to accept the role before it's transferred.
+ *         This is a basically a safety measure to prevent losing access to the contract.
+ */
 abstract contract Governable is IGovernable {
-  address private _governor;
-  address private _pendingGovernor;
+  /// @inheritdoc IGovernable
+  address public override governor;
 
-  constructor(address __governor) {
-    require(__governor != address(0), 'Governable: zero address');
-    _governor = __governor;
+  /// @inheritdoc IGovernable
+  address public override pendingGovernor;
+
+  constructor(address _governor) {
+    if (_governor == address(0)) revert GovernorIsZeroAddress();
+    governor = _governor;
   }
 
-  function governor() external view override returns (address) {
-    return _governor;
+  /// @inheritdoc IGovernable
+  function isGovernor(address _account) public view override returns (bool) {
+    return _account == governor;
   }
 
-  function pendingGovernor() external view override returns (address) {
-    return _pendingGovernor;
+  /// @inheritdoc IGovernable
+  function isPendingGovernor(address _account) public view override returns (bool) {
+    return _account == pendingGovernor;
   }
 
-  function setPendingGovernor(address __pendingGovernor) external virtual override onlyGovernor {
-    _setPendingGovernor(__pendingGovernor);
+  /// @inheritdoc IGovernable
+  function setPendingGovernor(address _pendingGovernor) external override onlyGovernor {
+    pendingGovernor = _pendingGovernor;
+    emit PendingGovernorSet(_pendingGovernor);
   }
 
-  function _setPendingGovernor(address __pendingGovernor) internal {
-    require(__pendingGovernor != address(0), 'Governable: zero address');
-    _pendingGovernor = __pendingGovernor;
-    emit PendingGovernorSet(__pendingGovernor);
-  }
-
-  function acceptPendingGovernor() external virtual override onlyPendingGovernor {
-    _acceptPendingGovernor();
-  }
-
-  function _acceptPendingGovernor() internal {
-    require(_pendingGovernor != address(0), 'Governable: no pending governor');
-    _governor = _pendingGovernor;
-    _pendingGovernor = address(0);
+  /// @inheritdoc IGovernable
+  function acceptPendingGovernor() external override onlyPendingGovernor {
+    governor = pendingGovernor;
+    pendingGovernor = address(0);
     emit PendingGovernorAccepted();
   }
 
-  function isGovernor(address _account) public view override returns (bool _isGovernor) {
-    return _account == _governor;
-  }
-
-  function isPendingGovernor(address _account) public view override returns (bool _isPendingGovernor) {
-    return _account == _pendingGovernor;
-  }
-
   modifier onlyGovernor() {
-    require(isGovernor(msg.sender), 'Governable: only governor');
+    if (!isGovernor(msg.sender)) revert OnlyGovernor();
     _;
   }
 
   modifier onlyPendingGovernor() {
-    // solhint-disable-next-line reason-string
-    require(isPendingGovernor(msg.sender), 'Governable: only pending governor');
+    if (!isPendingGovernor(msg.sender)) revert OnlyPendingGovernor();
     _;
   }
 }
