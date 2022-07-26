@@ -1,5 +1,0 @@
-settings:
-  speculativeBranchSelection: false
-  branches:
-    - main
-    - dev

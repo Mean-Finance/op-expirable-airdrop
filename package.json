@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "4.7.1",
-    "merkletreejs": "^0.2.32"
+    "merkletreejs": "0.2.32"
   },
   "devDependencies": {
     "@codechecks/client": "0.1.12",
