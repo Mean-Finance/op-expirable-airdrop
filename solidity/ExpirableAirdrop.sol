@@ -24,7 +24,7 @@ contract ExpirableAirdrop is Governable {
 
   event Claimed(address indexed _claimee, address indexed _receiver, uint256 _amount);
   event Deposited(uint256 _amount);
-  event Retrieved(uint256 _timestamp, address _receiver);
+  event Retrieved(address _receiver);
 
   /// @notice Creates a new ExpirableAirdrop contract
   /// @param _govAddy governor address
@@ -106,6 +106,6 @@ contract ExpirableAirdrop is Governable {
     address _gov = IGovernable(address(this)).governor();
     token.safeTransfer(_gov, token.balanceOf(address(this)));
 
-    emit Retrieved(block.timestamp, _gov);
+    emit Retrieved(_gov);
   }
 }
