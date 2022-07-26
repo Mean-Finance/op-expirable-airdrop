@@ -19,9 +19,9 @@ contract ExpirableAirdrop is Governable {
   error NotExpired();
   error NotInMerkle();
 
-  event Claimed(address indexed claimee, address indexed receiver, uint256 amount);
-  event Deposited(uint256 amount);
-  event Retrieved(uint256 timestamp, address receiver);
+  event Claimed(address indexed _claimee, address indexed _receiver, uint256 _amount);
+  event Deposited(uint256 _amount);
+  event Retrieved(uint256 _timestamp, address _receiver);
 
   /// @notice Creates a new ExpirableAirdrop contract
   /// @param _governor governor address
@@ -40,58 +40,58 @@ contract ExpirableAirdrop is Governable {
   }
 
   function _claim(
-    address claimee,
-    address receiver,
-    uint256 amount,
-    bytes32[] calldata proof
+    address _claimee,
+    address _receiver,
+    uint256 _amount,
+    bytes32[] calldata _proof
   ) internal {
     // CHECKS
     if (block.timestamp > expirationTimestamp) revert Expired();
-    if (hasClaimed[claimee]) revert AlreadyClaimed();
-    bytes32 leaf = keccak256(abi.encodePacked(claimee, amount));
-    bool isValidLeaf = MerkleProof.verify(proof, merkleRoot, leaf);
-    if (!isValidLeaf) revert NotInMerkle();
+    if (hasClaimed[_claimee]) revert AlreadyClaimed();
+    bytes32 _leaf = keccak256(abi.encodePacked(_claimee, _amount));
+    bool _isValidLeaf = MerkleProof.verify(_proof, merkleRoot, _leaf);
+    if (!_isValidLeaf) revert NotInMerkle();
 
     // EFFECTS
-    hasClaimed[claimee] = true;
+    hasClaimed[_claimee] = true;
 
     // INTERACTIONS
-    token.transfer(receiver, amount);
+    token.transfer(_receiver, _amount);
 
-    emit Claimed(claimee, receiver, amount);
+    emit Claimed(_claimee, _receiver, _amount);
   }
 
   /// @notice Allows claiming tokens, if address is part of merkle tree
-  /// @param claimee address of claimee
-  /// @param amount of tokens owed to claimee
-  /// @param proof merkle proof to prove address and amount are in tree
+  /// @param _claimee address of claimee
+  /// @param _amount of tokens owed to claimee
+  /// @param _proof merkle proof to prove address and amount are in tree
   function claim(
-    address claimee,
-    uint256 amount,
-    bytes32[] calldata proof
+    address _claimee,
+    uint256 _amount,
+    bytes32[] calldata _proof
   ) external {
-    _claim(claimee, claimee, amount, proof);
+    _claim(_claimee, _claimee, _amount, _proof);
   }
 
   /// @notice Allows claiming tokens and send tokens to a receiver, if address is part of merkle tree
-  /// @param receiver address to send tokens
-  /// @param amount of tokens owed to claimee
-  /// @param proof merkle proof to prove address and amount are in tree
+  /// @param _receiver address to send tokens
+  /// @param _amount of tokens owed to claimee
+  /// @param _proof merkle proof to prove address and amount are in tree
   function claimAndTransfer(
-    address receiver,
-    uint256 amount,
-    bytes32[] calldata proof
+    address _receiver,
+    uint256 _amount,
+    bytes32[] calldata _proof
   ) external {
-    _claim(msg.sender, receiver, amount, proof);
+    _claim(msg.sender, _receiver, _amount, _proof);
   }
 
   /// @notice Deposit tokens to airdrop
-  /// @param amount of tokens to deposit
-  function depositTokens(uint256 amount) external {
+  /// @param _amount of tokens to deposit
+  function depositTokens(uint256 _amount) external {
     // INTERACTIONS
-    token.transferFrom(msg.sender, address(this), amount);
+    token.transferFrom(msg.sender, address(this), _amount);
 
-    emit Deposited(amount);
+    emit Deposited(_amount);
   }
 
   /// @notice Return unclaimed tokens to governor
@@ -100,9 +100,9 @@ contract ExpirableAirdrop is Governable {
     if (block.timestamp <= expirationTimestamp) revert NotExpired();
 
     // INTERACTIONS
-    address governor = IGovernable(address(this)).governor();
-    token.transfer(governor, token.balanceOf(address(this)));
+    address _governor = IGovernable(address(this)).governor();
+    token.transfer(_governor, token.balanceOf(address(this)));
 
-    emit Retrieved(block.timestamp, governor);
+    emit Retrieved(block.timestamp, _governor);
   }
 }

@@ -3,7 +3,7 @@
 pragma solidity >=0.7.0;
 
 interface IGovernable {
-  event PendingGovernorSet(address pendingGovernor);
+  event PendingGovernorSet(address _pendingGovernor);
   event PendingGovernorAccepted();
 
   function setPendingGovernor(address _pendingGovernor) external;
@@ -71,6 +71,7 @@ abstract contract Governable is IGovernable {
   }
 
   modifier onlyPendingGovernor() {
+    // solhint-disable-next-line reason-string
     require(isPendingGovernor(msg.sender), 'Governable: only pending governor');
     _;
   }
