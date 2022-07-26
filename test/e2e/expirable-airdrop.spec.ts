@@ -167,7 +167,7 @@ describe('Expirable airdrop', () => {
 
     then('revert if not expired yet', async () => {
       // try to retrieve
-      await expect(expirableAirdrop.retrieveTokens()).to.be.revertedWithCustomError(expirableAirdrop, 'NotExpired');
+      await expect(expirableAirdrop.retrieveUnclaimedTokens()).to.be.revertedWithCustomError(expirableAirdrop, 'NotExpired');
     });
 
     then('tokens back in governor wallet', async () => {
@@ -177,7 +177,7 @@ describe('Expirable airdrop', () => {
       await time.increase(3 * oneMonth);
 
       // retrieve
-      await expirableAirdrop.retrieveTokens();
+      await expirableAirdrop.retrieveUnclaimedTokens();
 
       // expect
       expect(Number(balanceBefore)).greaterThan(0);

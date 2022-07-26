@@ -98,7 +98,7 @@ contract ExpirableAirdrop is Governable {
   }
 
   /// @notice Return unclaimed tokens to governor
-  function retrieveTokens() external {
+  function retrieveUnclaimedTokens() external {
     // CHECKS
     if (block.timestamp <= expirationTimestamp) revert NotExpired();
 
