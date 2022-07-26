@@ -64,7 +64,7 @@ contract ExpirableAirdrop is Governable {
     emit Claimed(_claimee, _receiver, _amount);
   }
 
-  /// @notice Allows claiming tokens, if address is part of merkle tree
+  /// @notice Allows claiming tokens for someone else but keeping the owner of the airdrop as the receiver. Will only work if address is part of merkle tree
   /// @param _claimee address of claimee
   /// @param _amount of tokens owed to claimee
   /// @param _proof merkle proof to prove address and amount are in tree
