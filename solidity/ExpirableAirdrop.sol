@@ -22,7 +22,7 @@ contract ExpirableAirdrop is Governable {
   error NotExpired();
   error NotInMerkle();
 
-  event Claimed(address indexed _claimee, address indexed _receiver, uint256 _amount);
+  event Claimed(address _claimee, address _receiver, uint256 _amount);
   event Deposited(uint256 _amount);
   event Retrieved(address _receiver);
 
