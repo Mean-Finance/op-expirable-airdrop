@@ -2,6 +2,7 @@ import { then, when, given } from '@utils/bdd';
 import { toUnit } from '@utils/bn';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber, Wallet } from 'ethers';
 import { takeSnapshot, time, setBalance, impersonateAccount } from '@nomicfoundation/hardhat-network-helpers';
 import { MerkleTree } from 'merkletreejs';
@@ -10,8 +11,8 @@ function getLeaf(address: string, amount: BigNumber) {
   return Buffer.from(ethers.utils.solidityKeccak256(['address', 'uint256'], [address, amount]).slice(2), 'hex');
 }
 
-function createMerkleRoot(accounts: any[], amount: number) {
-  let toClaim = ethers.utils.parseUnits(String(amount));
+function createMerkleRoot(accounts: any[], amount: BigNumber) {
+  let toClaim = amount;
 
   const leaves = accounts.map((x) => {
     let address = x.address;
@@ -35,6 +36,7 @@ describe('Expirable airdrop', () => {
   let token: any;
   let expirableAirdrop: any;
   let airdropAmount: number = 10;
+  let airdropAmountBN: BigNumber = toUnit(airdropAmount);
   let snapshot: any;
   const randomAddress: string = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
   const randomAddress2: string = '0x2089035369B33403DdcaBa6258c34e0B3FfbbBd9';
@@ -44,15 +46,15 @@ describe('Expirable airdrop', () => {
     expirationTimestamp = nowTimestamp + 3 * oneMonth; // 3 months
     [deployer, ...accounts] = await ethers.getSigners();
 
-    [root, tree] = createMerkleRoot(accounts, airdropAmount);
+    [root, tree] = createMerkleRoot(accounts, airdropAmountBN);
 
     // deploy erc20 mock
-    const Token = await ethers.getContractFactory('ERC20Mock');
-    token = await Token.deploy('Token', 'TKN');
+    const TokenFactory = await ethers.getContractFactory('ERC20Mock');
+    token = await TokenFactory.deploy('Token', 'TKN');
 
     // deploy contract
-    const ExpirableAirdrop = await ethers.getContractFactory('ExpirableAirdrop');
-    expirableAirdrop = await ExpirableAirdrop.deploy(deployer.address, token.address, expirationTimestamp, root);
+    const ExpirableAirdropFactory = await ethers.getContractFactory('ExpirableAirdrop');
+    expirableAirdrop = await ExpirableAirdropFactory.deploy(deployer.address, token.address, expirationTimestamp, root);
   });
 
   when('deposit', () => {
@@ -81,47 +83,49 @@ describe('Expirable airdrop', () => {
   });
 
   when('claimAndSendToClaimee', () => {
-    let alice: any;
+    let alice: SignerWithAddress;
     let leaf: any;
     let proof: any;
 
     given(async () => {
       alice = accounts[1];
-      leaf = getLeaf(alice.address, toUnit(airdropAmount));
+      leaf = getLeaf(alice.address, airdropAmountBN);
       proof = tree.getHexProof(leaf);
     });
 
     then('airdrop claimed', async () => {
       // user claims airdrop
-      await expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, toUnit(airdropAmount), proof);
+      await expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, airdropAmountBN, proof);
 
       // expect
-      expect(await token.balanceOf(alice.address)).equal(toUnit(airdropAmount));
+      expect(await token.balanceOf(alice.address)).equal(airdropAmountBN);
     });
 
     then('revert if already claimed', async () => {
-      await expect(
-        expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, toUnit(airdropAmount), proof)
-      ).to.be.revertedWithCustomError(expirableAirdrop, 'AlreadyClaimed');
+      await expect(expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, airdropAmountBN, proof)).to.be.revertedWithCustomError(
+        expirableAirdrop,
+        'AlreadyClaimed'
+      );
     });
 
     then('revert if no airdrop', async () => {
       await impersonateAccount(randomAddress);
       let random: any = await ethers.getSigner(randomAddress);
       await setBalance(randomAddress, toUnit(10000));
-      let _leaf = getLeaf(randomAddress, toUnit(airdropAmount));
+      let _leaf = getLeaf(randomAddress, airdropAmountBN);
       let _proof = tree.getHexProof(_leaf);
 
-      await expect(
-        expirableAirdrop.connect(random).claimAndSendToClaimee(randomAddress, toUnit(airdropAmount), _proof)
-      ).to.be.revertedWithCustomError(expirableAirdrop, 'NotInMerkle');
+      await expect(expirableAirdrop.connect(random).claimAndSendToClaimee(randomAddress, airdropAmountBN, _proof)).to.be.revertedWithCustomError(
+        expirableAirdrop,
+        'NotInMerkle'
+      );
     });
   });
 
   when('claimAndSendToClaimee and transfer', () => {
-    let bob: any;
-    let carl: any;
-    let receiver: any;
+    let bob: SignerWithAddress;
+    let carl: SignerWithAddress;
+    let receiver: SignerWithAddress;
     let leaf: any;
     let proof: any;
 
@@ -131,27 +135,27 @@ describe('Expirable airdrop', () => {
       await impersonateAccount(randomAddress2);
       receiver = await ethers.getSigner(randomAddress2);
       await setBalance(randomAddress, toUnit(10000));
-      leaf = getLeaf(bob.address, toUnit(airdropAmount));
+      leaf = getLeaf(bob.address, airdropAmountBN);
       proof = tree.getHexProof(leaf);
     });
 
     then('airdrop claimed', async () => {
       // user claims airdrop
-      await expirableAirdrop.connect(bob).claimAndTransfer(randomAddress2, toUnit(airdropAmount), proof);
+      await expirableAirdrop.connect(bob).claimAndTransfer(randomAddress2, airdropAmountBN, proof);
 
       // expect
-      expect(await token.balanceOf(randomAddress2)).equal(toUnit(airdropAmount));
+      expect(await token.balanceOf(randomAddress2)).equal(airdropAmountBN);
     });
 
     then('revert if expired', async () => {
-      leaf = getLeaf(carl.address, toUnit(airdropAmount));
+      leaf = getLeaf(carl.address, airdropAmountBN);
       proof = tree.getHexProof(leaf);
 
       // time travelling
       await time.increase(3 * oneMonth);
 
       // expeect
-      await expect(expirableAirdrop.connect(carl).claimAndTransfer(randomAddress2, toUnit(airdropAmount), proof)).to.be.revertedWithCustomError(
+      await expect(expirableAirdrop.connect(carl).claimAndTransfer(randomAddress2, airdropAmountBN, proof)).to.be.revertedWithCustomError(
         expirableAirdrop,
         'Expired'
       );
