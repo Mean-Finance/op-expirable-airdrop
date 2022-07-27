@@ -68,7 +68,7 @@ contract ExpirableAirdrop is Governable {
   /// @param _claimee address of claimee
   /// @param _amount of tokens owed to claimee
   /// @param _proof merkle proof to prove address and amount are in tree
-  function claim(
+  function claimAndSendToClaimee(
     address _claimee,
     uint256 _amount,
     bytes32[] calldata _proof

@@ -80,7 +80,7 @@ describe('Expirable airdrop', () => {
     });
   });
 
-  when('claim', () => {
+  when('claimAndSendToClaimee', () => {
     let alice: any;
     let leaf: any;
     let proof: any;
@@ -93,17 +93,16 @@ describe('Expirable airdrop', () => {
 
     then('airdrop claimed', async () => {
       // user claims airdrop
-      await expirableAirdrop.connect(alice).claim(alice.address, toUnit(airdropAmount), proof);
+      await expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, toUnit(airdropAmount), proof);
 
       // expect
       expect(await token.balanceOf(alice.address)).equal(toUnit(airdropAmount));
     });
 
     then('revert if already claimed', async () => {
-      await expect(expirableAirdrop.connect(alice).claim(alice.address, toUnit(airdropAmount), proof)).to.be.revertedWithCustomError(
-        expirableAirdrop,
-        'AlreadyClaimed'
-      );
+      await expect(
+        expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, toUnit(airdropAmount), proof)
+      ).to.be.revertedWithCustomError(expirableAirdrop, 'AlreadyClaimed');
     });
 
     then('revert if no airdrop', async () => {
@@ -113,14 +112,13 @@ describe('Expirable airdrop', () => {
       let _leaf = getLeaf(randomAddress, toUnit(airdropAmount));
       let _proof = tree.getHexProof(_leaf);
 
-      await expect(expirableAirdrop.connect(random).claim(randomAddress, toUnit(airdropAmount), _proof)).to.be.revertedWithCustomError(
-        expirableAirdrop,
-        'NotInMerkle'
-      );
+      await expect(
+        expirableAirdrop.connect(random).claimAndSendToClaimee(randomAddress, toUnit(airdropAmount), _proof)
+      ).to.be.revertedWithCustomError(expirableAirdrop, 'NotInMerkle');
     });
   });
 
-  when('claim and transfer', () => {
+  when('claimAndSendToClaimee and transfer', () => {
     let bob: any;
     let carl: any;
     let receiver: any;
