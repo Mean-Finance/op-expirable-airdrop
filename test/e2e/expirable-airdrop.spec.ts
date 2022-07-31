@@ -3,8 +3,8 @@ import { toUnit } from '@utils/bn';
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumber } from 'ethers';
-import { takeSnapshot, time, setBalance, impersonateAccount } from '@nomicfoundation/hardhat-network-helpers';
+import { BigNumber, Transaction } from 'ethers';
+import { takeSnapshot, time, setBalance, impersonateAccount, SnapshotRestorer } from '@nomicfoundation/hardhat-network-helpers';
 import { MerkleTree } from 'merkletreejs';
 
 function getLeaf(address: string, amount: BigNumber) {
@@ -29,15 +29,15 @@ describe('Expirable airdrop', () => {
   let nowTimestamp: number;
   const oneMonth: number = 30 * 24 * 60 * 60; // one month in seconds
   let expirationTimestamp: number;
-  let accounts: any[];
-  let deployer: any;
+  let accounts: SignerWithAddress[];
+  let deployer: SignerWithAddress;
   let root: any;
   let tree: any;
   let token: any;
   let expirableAirdrop: any;
   let airdropAmount: number = 10;
   let airdropAmountBN: BigNumber = toUnit(airdropAmount);
-  let snapshot: any;
+  let snapshot: SnapshotRestorer;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carl: SignerWithAddress;
@@ -47,13 +47,6 @@ describe('Expirable airdrop', () => {
   async function prepareAirdrop() {
     let toDeposit = toUnit(airdropAmount * (accounts.length + 1));
     await token.mint(expirableAirdrop.address, toDeposit);
-  }
-
-  async function claim(sender: SignerWithAddress, claimee: SignerWithAddress) {
-    let leaf = getLeaf(claimee.address, airdropAmountBN);
-    let proof = tree.getHexProof(leaf);
-
-    await expirableAirdrop.connect(sender).claimAndSendToClaimee(claimee.address, airdropAmountBN, proof);
   }
 
   before(async () => {
@@ -87,29 +80,35 @@ describe('Expirable airdrop', () => {
     await snapshot.restore();
   });
 
-  when('deposit', () => {
+  when('depositTokens()', () => {
     let toDeposit: BigNumber;
+    let tx: Transaction;
 
     given(async () => {
       toDeposit = toUnit(airdropAmount * (accounts.length + 1));
 
       // transfer some tokens
       await token.mint(deployer.address, toDeposit);
-    });
 
-    then('airdrop is deposited', async () => {
       // approve
       await token.approve(expirableAirdrop.address, ethers.constants.MaxUint256);
 
       // deposit
       await expirableAirdrop.depositTokens(toDeposit);
+    });
 
+    then('airdrop is deposited', async () => {
       // expect
       expect(await token.balanceOf(expirableAirdrop.address)).equal(toDeposit);
     });
+
+    then('event is emitted', async () => {
+      // expect
+      expect(tx).to.have.emit(expirableAirdrop, 'Deposited').withArgs(toDeposit);
+    });
   });
 
-  when('claim and send to claimee', () => {
+  when('claimAndSendToClaimee()', () => {
     let leaf: any;
     let proof: any;
 
@@ -120,30 +119,56 @@ describe('Expirable airdrop', () => {
       proof = tree.getHexProof(leaf);
     });
 
-    then('airdrop claimed', async () => {
-      // user claims airdrop
-      await expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, airdropAmountBN, proof);
+    when('airdrop is claimed by claimee', () => {
+      let tx: Transaction;
 
-      // expect
-      expect(await token.balanceOf(alice.address)).equal(airdropAmountBN);
+      given(async () => {
+        tx = await expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, airdropAmountBN, proof);
+      });
+
+      then('tokens are transferred to claimee', async () => {
+        // expect
+        expect(await token.balanceOf(alice.address)).equal(airdropAmountBN);
+      });
+
+      then('event is emitted', async () => {
+        // expect
+        expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(alice.address, alice.address, airdropAmountBN);
+      });
+
+      then('claimee is marked as claimed', async () => {
+        // expect
+        await expect(expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, airdropAmountBN, proof)).to.be.revertedWithCustomError(
+          expirableAirdrop,
+          'AlreadyClaimed'
+        );
+      });
     });
 
-    then('claim on behalf of', async () => {
-      // user claims airdrop
-      await expirableAirdrop.connect(bob).claimAndSendToClaimee(alice.address, airdropAmountBN, proof);
+    when('airdrop is claimed on behalf of', () => {
+      let tx: Transaction;
 
-      // expect
-      expect(await token.balanceOf(alice.address)).equal(airdropAmountBN);
-    });
+      given(async () => {
+        tx = await expirableAirdrop.connect(bob).claimAndSendToClaimee(alice.address, airdropAmountBN, proof);
+      });
 
-    then('revert if already claimed', async () => {
-      await claim(alice, alice);
+      then('tokens are transferred to claimee', async () => {
+        // expect
+        expect(await token.balanceOf(alice.address)).equal(airdropAmountBN);
+      });
 
-      // expect
-      await expect(expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, airdropAmountBN, proof)).to.be.revertedWithCustomError(
-        expirableAirdrop,
-        'AlreadyClaimed'
-      );
+      then('event is emitted', async () => {
+        // expect
+        expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(alice.address, alice.address, airdropAmountBN);
+      });
+
+      then('claimee is marked as claimed', async () => {
+        // expect
+        await expect(expirableAirdrop.connect(alice).claimAndSendToClaimee(alice.address, airdropAmountBN, proof)).to.be.revertedWithCustomError(
+          expirableAirdrop,
+          'AlreadyClaimed'
+        );
+      });
     });
 
     then('revert if no airdrop', async () => {
@@ -168,7 +193,7 @@ describe('Expirable airdrop', () => {
     });
   });
 
-  when('claim and transfer', () => {
+  when('claimAndTransfer()', () => {
     let leaf: any;
     let proof: any;
 
@@ -179,22 +204,30 @@ describe('Expirable airdrop', () => {
       proof = tree.getHexProof(leaf);
     });
 
-    then('airdrop claimed', async () => {
-      // user claims airdrop
-      await expirableAirdrop.connect(bob).claimAndTransfer(randomAddress, airdropAmountBN, proof);
+    when('airdrop is claimed by claimee', () => {
+      let tx: Transaction;
 
-      // expect
-      expect(await token.balanceOf(randomAddress)).equal(airdropAmountBN);
-    });
+      given(async () => {
+        tx = await expirableAirdrop.connect(bob).claimAndTransfer(randomAddress, airdropAmountBN, proof);
+      });
 
-    then('revert if already claimed', async () => {
-      await claim(random, bob);
+      then('tokens are transferred to claimee', async () => {
+        // expect
+        expect(await token.balanceOf(randomAddress)).equal(airdropAmountBN);
+      });
 
-      // expect
-      await expect(expirableAirdrop.connect(bob).claimAndTransfer(randomAddress, airdropAmountBN, proof)).to.be.revertedWithCustomError(
-        expirableAirdrop,
-        'AlreadyClaimed'
-      );
+      then('event is emitted', async () => {
+        // expect
+        expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(bob.address, randomAddress, airdropAmountBN);
+      });
+
+      then('claimee is marked as claimed', async () => {
+        // expect
+        await expect(expirableAirdrop.connect(bob).claimAndTransfer(alice.address, airdropAmountBN, proof)).to.be.revertedWithCustomError(
+          expirableAirdrop,
+          'AlreadyClaimed'
+        );
+      });
     });
 
     then('revert if no airdrop', async () => {
@@ -222,9 +255,12 @@ describe('Expirable airdrop', () => {
     });
   });
 
-  when('retrieve', () => {
+  when('retrieveUnclaimedTokens()', () => {
+    let balanceBefore: BigNumber;
+
     given(async () => {
       await prepareAirdrop();
+      balanceBefore = await token.balanceOf(expirableAirdrop.address);
     });
 
     then('revert if not expired yet', async () => {
@@ -232,19 +268,35 @@ describe('Expirable airdrop', () => {
       await expect(expirableAirdrop.retrieveUnclaimedTokens()).to.be.revertedWithCustomError(expirableAirdrop, 'NotExpired');
     });
 
-    then('tokens back in governor wallet', async () => {
-      let balanceBefore = await token.balanceOf(expirableAirdrop.address);
+    when('tokens back in governor wallet', () => {
+      let tx: Transaction;
 
-      // time travelling
-      await time.increase(3 * oneMonth);
+      given(async () => {
+        // time travelling
+        await time.increase(3 * oneMonth);
 
-      // retrieve
-      await expirableAirdrop.retrieveUnclaimedTokens();
+        tx = await expirableAirdrop.retrieveUnclaimedTokens();
+      });
 
-      // expect
-      expect(Number(balanceBefore)).greaterThan(0);
-      expect(await token.balanceOf(expirableAirdrop.address)).equal(0);
-      expect(await token.balanceOf(deployer.address)).equal(balanceBefore);
+      then('contract balance before retrieving is more than zero', async () => {
+        // expect
+        expect(Number(balanceBefore)).greaterThan(0);
+      });
+
+      then('tokens are transferred to governance', async () => {
+        // expect
+        expect(await token.balanceOf(deployer.address)).equal(balanceBefore);
+      });
+
+      then('event is emitted', async () => {
+        // expect
+        expect(tx).to.have.emit(expirableAirdrop, 'Retrieved').withArgs(deployer.address);
+      });
+
+      then('contract balance is zero', async () => {
+        // expect
+        expect(await token.balanceOf(expirableAirdrop.address)).equal(0);
+      });
     });
   });
 });
