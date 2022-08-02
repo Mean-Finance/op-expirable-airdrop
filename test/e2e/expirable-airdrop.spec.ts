@@ -289,4 +289,58 @@ describe('Expirable airdrop', () => {
       });
     });
   });
+
+  describe('updateMerkleRoot()', () => {
+    let newMerkleRoot: Uint8Array;
+
+    given(async () => {
+      newMerkleRoot = ethers.utils.randomBytes(32);
+    });
+
+    when('caller is not governor', () => {
+      then('revert with custom error', async () => {
+        await expect(expirableAirdrop.connect(alice).updateMerkleRoot(newMerkleRoot)).to.be.revertedWithCustomError(
+          expirableAirdrop,
+          'OnlyGovernor'
+        );
+      });
+    });
+
+    when('caller is governor', () => {
+      given(async () => {
+        await expirableAirdrop.connect(deployer).updateMerkleRoot(newMerkleRoot);
+      });
+
+      then('merkle root should have the new value', async () => {
+        expect(await expirableAirdrop.merkleRoot()).equal(ethers.utils.hexlify(newMerkleRoot));
+      });
+    });
+  });
+
+  describe('updateExpirationTimestamp()', () => {
+    let newExpirationTimestamp: number;
+
+    given(async () => {
+      let nowTimestamp: number = await time.latest();
+      newExpirationTimestamp = nowTimestamp + 4 * oneMonth;
+    });
+
+    when('caller is not governor', () => {
+      then('revert with custom error', async () => {
+        await expect(expirableAirdrop.connect(alice).updateExpirationTimestamp(newExpirationTimestamp)).to.be.revertedWithCustomError(
+          expirableAirdrop,
+          'OnlyGovernor'
+        );
+      });
+    });
+
+    when('caller is governor', () => {
+      given(async () => {
+        await expirableAirdrop.connect(deployer).updateExpirationTimestamp(newExpirationTimestamp);
+      });
+      then('expiration timestamp should have the new value', async () => {
+        expect((await expirableAirdrop.expirationTimestamp()).toNumber()).equal(newExpirationTimestamp);
+      });
+    });
+  });
 });
