@@ -307,12 +307,22 @@ describe('Expirable airdrop', () => {
     });
 
     when('caller is governor', () => {
+      let tx: Transaction;
+      let oldMerkleRoot: Uint8Array;
+
       given(async () => {
-        await expirableAirdrop.connect(deployer).updateMerkleRoot(newMerkleRoot);
+        oldMerkleRoot = await expirableAirdrop.merkleRoot();
+        tx = await expirableAirdrop.connect(deployer).updateMerkleRoot(newMerkleRoot);
       });
 
       then('merkle root should have the new value', async () => {
         expect(await expirableAirdrop.merkleRoot()).equal(ethers.utils.hexlify(newMerkleRoot));
+      });
+
+      then('event is emitted', async () => {
+        expect(tx)
+          .to.have.emit(expirableAirdrop, 'MerkleRootUpdated')
+          .withArgs(ethers.utils.hexlify(oldMerkleRoot), ethers.utils.hexlify(newMerkleRoot));
       });
     });
   });
@@ -321,7 +331,7 @@ describe('Expirable airdrop', () => {
     let newExpirationTimestamp: number;
 
     given(async () => {
-      let nowTimestamp: number = await time.latest();
+      const nowTimestamp: number = await time.latest();
       newExpirationTimestamp = nowTimestamp + 4 * oneMonth;
     });
 
@@ -335,11 +345,19 @@ describe('Expirable airdrop', () => {
     });
 
     when('caller is governor', () => {
+      let tx: Transaction;
+      let oldExpirationTimestamp: BigNumber;
+
       given(async () => {
         await expirableAirdrop.connect(deployer).updateExpirationTimestamp(newExpirationTimestamp);
       });
+
       then('expiration timestamp should have the new value', async () => {
         expect((await expirableAirdrop.expirationTimestamp()).toNumber()).equal(newExpirationTimestamp);
+      });
+
+      then('event is emitted', async () => {
+        expect(tx).to.have.emit(expirableAirdrop, 'ExpirationTimestampUpdated').withArgs(oldExpirationTimestamp, toUnit(newExpirationTimestamp));
       });
     });
   });
