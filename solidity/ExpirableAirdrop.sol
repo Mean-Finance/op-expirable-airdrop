@@ -13,8 +13,8 @@ contract ExpirableAirdrop is Governable {
   using SafeERC20 for IERC20;
 
   IERC20 public immutable token;
-  uint256 public immutable expirationTimestamp;
-  bytes32 public immutable merkleRoot;
+  uint256 public expirationTimestamp;
+  bytes32 public merkleRoot;
   mapping(address => bool) public hasClaimed;
 
   error AlreadyClaimed();
@@ -25,6 +25,8 @@ contract ExpirableAirdrop is Governable {
   event Claimed(address _claimee, address _receiver, uint256 _amount);
   event Deposited(uint256 _amount);
   event Retrieved(address _receiver);
+  event MerkleRootUpdated(bytes32 _oldMerkleRoot, bytes32 _newMerkleRoot);
+  event ExpirationTimestampUpdated(uint256 _oldExpirationTimestamp, uint256 _newExpirationTimestamp);
 
   /// @notice Creates a new ExpirableAirdrop contract
   /// @param _govAddy governor address
@@ -106,5 +108,25 @@ contract ExpirableAirdrop is Governable {
     token.safeTransfer(governor, token.balanceOf(address(this)));
 
     emit Retrieved(governor);
+  }
+
+  /// @notice Used by governor to update the merkle root
+  /// @param _newMerkleRoot new merkle root
+  function updateMerkleRoot(bytes32 _newMerkleRoot) external onlyGovernor {
+    // EFFECTS
+    bytes32 _oldMerkleRoot = merkleRoot;
+    merkleRoot = _newMerkleRoot;
+
+    emit MerkleRootUpdated(_oldMerkleRoot, _newMerkleRoot);
+  }
+
+  /// @notice Used by governor to update the expiration timestamp
+  /// @param _newExpirationTimestamp new expiration timestamp
+  function updateExpirationTimestamp(uint256 _newExpirationTimestamp) external onlyGovernor {
+    // EFFECTS
+    uint256 _oldExpirationTimestamp = expirationTimestamp;
+    expirationTimestamp = _newExpirationTimestamp;
+
+    emit ExpirationTimestampUpdated(_oldExpirationTimestamp, _newExpirationTimestamp);
   }
 }
