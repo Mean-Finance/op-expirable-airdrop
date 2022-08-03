@@ -17,13 +17,13 @@ const networks: NetworksUserConfig =
             url: env.getNodeUrl('ethereum'),
           },
         },
-        kovan: {
-          url: env.getNodeUrl('kovan'),
-          accounts: env.getAccounts('kovan'),
+        goerli: {
+          url: env.getNodeUrl('goerli'),
+          accounts: env.getAccounts('goerli'),
         },
-        ethereum: {
-          url: env.getNodeUrl('ethereum'),
-          accounts: env.getAccounts('ethereum'),
+        optimism: {
+          url: env.getNodeUrl('optimism'),
+          accounts: env.getAccounts('optimism'),
         },
       };
 
@@ -62,7 +62,7 @@ const config: HardhatUserConfig = {
     eachLine: removeConsoleLog((hre) => hre.network.name !== 'hardhat'),
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum']),
+    apiKey: env.getEtherscanAPIKeys(['goerli', 'optimism']),
   },
   typechain: {
     outDir: 'typechained',
