@@ -92,7 +92,7 @@ describe('Expirable airdrop', () => {
       await token.approve(expirableAirdrop.address, ethers.constants.MaxUint256);
 
       // deposit
-      await expirableAirdrop.depositTokens(toDeposit);
+      tx = await expirableAirdrop.depositTokens(toDeposit);
     });
 
     then('airdrop is deposited', async () => {
@@ -100,7 +100,7 @@ describe('Expirable airdrop', () => {
     });
 
     then('event is emitted', async () => {
-      expect(tx).to.have.emit(expirableAirdrop, 'Deposited').withArgs(toDeposit);
+      await expect(tx).to.have.emit(expirableAirdrop, 'Deposited').withArgs(toDeposit);
     });
   });
 
@@ -127,7 +127,7 @@ describe('Expirable airdrop', () => {
       });
 
       then('event is emitted', async () => {
-        expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(alice.address, alice.address, airdropAmountBN);
+        await expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(alice.address, alice.address, airdropAmountBN);
       });
 
       then('claimee is marked as claimed', async () => {
@@ -150,7 +150,7 @@ describe('Expirable airdrop', () => {
       });
 
       then('event is emitted', async () => {
-        expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(alice.address, alice.address, airdropAmountBN);
+        await expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(alice.address, alice.address, airdropAmountBN);
       });
 
       then('claimee is marked as claimed', async () => {
@@ -208,7 +208,7 @@ describe('Expirable airdrop', () => {
       });
 
       then('event is emitted', async () => {
-        expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(bob.address, randomAddress, airdropAmountBN);
+        await expect(tx).to.have.emit(expirableAirdrop, 'Claimed').withArgs(bob.address, randomAddress, airdropAmountBN);
       });
 
       then('claimee is marked as claimed', async () => {
@@ -281,7 +281,7 @@ describe('Expirable airdrop', () => {
       });
 
       then('event is emitted', async () => {
-        expect(tx).to.have.emit(expirableAirdrop, 'Retrieved').withArgs(deployer.address);
+        await expect(tx).to.have.emit(expirableAirdrop, 'Retrieved').withArgs(deployer.address);
       });
 
       then('contract balance is zero', async () => {
@@ -320,7 +320,7 @@ describe('Expirable airdrop', () => {
       });
 
       then('event is emitted', async () => {
-        expect(tx)
+        await expect(tx)
           .to.have.emit(expirableAirdrop, 'MerkleRootUpdated')
           .withArgs(ethers.utils.hexlify(oldMerkleRoot), ethers.utils.hexlify(newMerkleRoot));
       });
@@ -349,7 +349,8 @@ describe('Expirable airdrop', () => {
       let oldExpirationTimestamp: BigNumber;
 
       given(async () => {
-        await expirableAirdrop.connect(deployer).updateExpirationTimestamp(newExpirationTimestamp);
+        oldExpirationTimestamp = await expirableAirdrop.expirationTimestamp();
+        tx = await expirableAirdrop.connect(deployer).updateExpirationTimestamp(newExpirationTimestamp);
       });
 
       then('expiration timestamp should have the new value', async () => {
@@ -357,7 +358,9 @@ describe('Expirable airdrop', () => {
       });
 
       then('event is emitted', async () => {
-        expect(tx).to.have.emit(expirableAirdrop, 'ExpirationTimestampUpdated').withArgs(oldExpirationTimestamp, toUnit(newExpirationTimestamp));
+        await expect(tx)
+          .to.have.emit(expirableAirdrop, 'ExpirationTimestampUpdated')
+          .withArgs(oldExpirationTimestamp, ethers.utils.parseUnits(String(newExpirationTimestamp), 'wei'));
       });
     });
   });
