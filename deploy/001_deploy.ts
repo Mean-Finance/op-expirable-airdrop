@@ -6,7 +6,7 @@ const oneMonth: number = 30 * 24 * 60 * 60; // one month in seconds
 
 let governor: string; // governor address
 let token: string; // token address
-let monthsTillExpiration: number; // how many monts to expiration (since deploy block timestamp)
+let monthsTillExpiration: number; // how many months to expiration (since deploy block timestamp)
 let merkleRoot: string; // merkle root in hex string
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
